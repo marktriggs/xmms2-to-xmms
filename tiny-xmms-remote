@@ -1,0 +1,64 @@
+#!/bin/bash
+
+case "$1" in
+     get)
+         count=0
+         xmms2 list | 
+             egrep '\[[0-9]+/[0-9]+\] ' | 
+             sed 's/^.*\] \(.*\) (.*$/\1/' | 
+             while read track; do
+                 echo -n "$track"
+                 echo -n -e "\0"
+                 echo -n "$count"
+                 echo
+
+                 count=$[count + 1]
+             done
+     ;;   
+     skip)
+         # incoming pos is zero-indexed, but xmms2 starts at 1
+         pos=$2
+         xmms2 jump $[pos + 1]
+     ;;
+     next)
+         xmms2 next
+     ;;
+     prev)
+         xmms2 prev
+     ;;
+     length)
+         $0 get | wc -l
+     ;;
+     state)
+         xmms2 current | cut -d':' -f1 | tr 'A-Z' 'a-z'
+     ;;
+     playing)
+         IFS=""
+         xmms2 list | grep -e '^->' | sed 's/^->\[\([0-9]\+\)\/[0-9]\+\] \(.*\) (.*$/\2\n\1/' | { 
+                 IFS=$'\n'
+                 read -rd '' file pos
+                 echo "$file"
+                 echo $[pos - 1]; 
+             }
+     ;;
+     play)
+         xmms2 play
+     ;;
+     stop)
+         xmms2 stop
+     ;;
+     pause)
+         xmms2 pause
+     ;;
+     status)
+         xmms2 current -f '[${playtime}] ${bitrate} Kbps; ${samplerate} hz; ${channels} channels'
+     ;;
+     remove)
+         # incoming pos is zero-indexed, but xmms2 starts at 1
+         pos=$2
+         xmms2 remove $[pos + 1]
+     ;;
+     id)
+         $0 list | sha1sum | awk '{print $1}'
+     ;;
+esac

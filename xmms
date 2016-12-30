@@ -1,0 +1,80 @@
+#!/bin/bash
+
+(
+    flock -x -w 10 200 || exit 1
+) 200>$HOME/.xmms-runner-lock
+
+
+function start_daemon_if_necessary {
+    if [ "`pgrep -u $USER xmms2d`" = "" ]; then
+        SOCKET_FILE="/tmp/xmms-ipc-$USER"
+
+        # Start it up
+        rm -f "$SOCKET_FILE"
+
+        xmms2d -v &>$HOME/.xmms2d.log &
+        disown
+
+        while [ ! -e "$SOCKET_FILE" ]; do
+            sleep 0.1
+        done
+
+        sleep 2
+    fi
+}
+
+
+start_daemon_if_necessary
+
+if [ "$1" == "" ]; then
+    # Nothing else to do
+    exit
+fi
+
+case "$1" in
+    --stop)
+        xmms2 stop
+        ;;
+    -p|--play)
+        xmms2 play
+        ;;
+    --pause)
+        xmms2 pause        
+        ;;
+    --play-pause)
+        if xmms2 current 2>&1 | grep '^Playing' &>/dev/null; then
+           xmms2 pause
+        else
+            xmms2 play
+        fi
+        ;;
+
+    *)
+        enqueue=0
+
+        if [ "$1" = "-e" ]; then
+            enqueue=1
+            shift
+        fi
+
+        if [ "$enqueue" = "0" ]; then
+            xmms2 stop
+            xmms2 remove '*'
+        fi
+
+        for file in ${1+"$@"}; do
+            if [[ "$file" == *.m3u ]]; then
+                xmms2 add -P "$file"
+            else
+                xmms2 add -f "$file"
+            fi
+        done
+
+        if [ "`xmms2 current | awk '{print $1}'`" = "Stopped:" ]; then
+            xmms2 play
+        fi
+
+        ;;
+esac
+
+
