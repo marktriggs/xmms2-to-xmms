@@ -5,7 +5,7 @@ case "$1" in
          count=0
          xmms2 list | 
              egrep '\[[0-9]+/[0-9]+\] ' | 
-             sed 's/^.*\] \(.*\) (.*$/\1/' | 
+             sed 's/^[^]]*\] \(.*\) (.*$/\1/' | 
              while read track; do
                  echo -n "$track"
                  echo -n -e "\0"
